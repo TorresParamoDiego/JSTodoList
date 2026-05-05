@@ -1,21 +1,39 @@
 import AddTodo from './components/add-todo.js';
 import Modal from './components/modal.js';
-import Filters from './components/filters.js'; export default class View {
+import Filters from './components/filters.js';
+
+export default class View {
     constructor() {
         this.model = null;
         this.table = document.getElementById('table');
+
         this.addTodoForm = new AddTodo();
         this.modal = new Modal();
-        this.filters = new Filters();
+        this.filtersComponent = new Filters();
+
+        // 🔥 estado de filtros
+        this.filters = {
+            type: 'all',
+            words: ''
+        };
+
         this.addTodoForm.onClick((title, description, dueDate) =>
             this.addTodo(title, description, dueDate)
         );
+
         this.modal.onClick((id, values) => this.editTodo(id, values));
-        this.filters.onClick((filters) => this.filter(filters));
+
+        this.filtersComponent.onClick((filters) => {
+            this.filters = filters;
+            this.render();
+        });
     }
+
     setModel(model) {
         this.model = model;
     }
+
+    // 🔥 render centralizado
     render() {
         this.table.innerHTML = `
         <thead>
@@ -28,76 +46,62 @@ import Filters from './components/filters.js'; export default class View {
             </tr>
         </thead>
         <tbody></tbody>
-    `;
+        `;
 
-        const todos = this.model.getTodos();
+        let todos = this.model.getTodos();
+
+        // 🔥 aplicar filtros aquí
+        todos = this.applyFilters(todos);
+
         todos.forEach(todo => this.createRow(todo));
     }
-    filter(filters) {
-        const { type, words } = filters;
-        const [, ...rows] = this.table.getElementsByTagName('tr');
 
-        for (const row of rows) {
-            const [title, description, date, completed] = row.children;
+    // 🔥 NUEVO: filtro basado en datos (NO DOM)
+    applyFilters(todos) {
+        const { type, words } = this.filters;
 
-            let shouldHide = false;
+        return todos.filter(todo => {
 
-            const todo = this.model.getTodos().find(t => t.id == row.id);
+            const matchText =
+                !words ||
+                todo.title.toLowerCase().includes(words.toLowerCase()) ||
+                todo.description.toLowerCase().includes(words.toLowerCase());
 
-            if (words) {
-                shouldHide = !title.innerText.includes(words) &&
-                    !description.innerText.includes(words);
-            }
+            let matchType = true;
 
-            if (type === 'completed' && !todo.completed) {
-                shouldHide = true;
-            }
+            if (type === 'completed') matchType = todo.completed;
+            if (type === 'uncompleted') matchType = !todo.completed;
+            if (type === 'archived') matchType = todo.archived;
+            if (type !== 'archived') matchType = !todo.archived;
 
-            if (type === 'uncompleted' && todo.completed) {
-                shouldHide = true;
-            }
-
-            if (type === 'archived' && !todo.archived) {
-                shouldHide = true;
-            }
-
-            if (type !== 'archived' && todo.archived) {
-                shouldHide = true;
-            }
-
-            if (shouldHide) {
-                row.classList.add('d-none');
-            } else {
-                row.classList.remove('d-none');
-            }
-        }
+            return matchText && matchType;
+        });
     }
-    addTodo(title, description, dueDate) {
-        const todo = this.model.addTodo(title, description, dueDate);
+
+    async addTodo(title, description, dueDate) {
+        await this.model.addTodo(title, description, dueDate);
         this.render();
     }
-    toggleCompleted(id) {
-        this.model.toggleCompleted(id);
+
+    async toggleCompleted(id) {
+        await this.model.toggleCompleted(id);
+        this.render();
     }
-    removeTodo(id) {
-        this.model.removeTodo(id);
-        document.getElementById(id).remove();
+
+    async removeTodo(id) {
+        await this.model.removeTodo(id);
+        this.render();
     }
-    editTodo(id, values) {
-        this.model.editTodo(id, values);
-        const row = document.getElementById(id);
-        row.children[0].innerText = values.title;
-        row.children[1].innerText = values.description;
-        row.children[3].children[0].checked = values.completed;
+
+    async editTodo(id, values) {
+        await this.model.editTodo(id, values);
+        this.render();
     }
-    removeTodo(id) {
-        this.model.removeTodo(id);
-        document.getElementById(id).remove();
-    }
+
     createRow(todo) {
         const row = this.table.insertRow();
         row.setAttribute('id', todo.id);
-        const td1 = document.createElement('td');
+
         row.innerHTML = `
             <td>${todo.title}</td>
             <td>${todo.description}</td>
@@ -105,57 +109,39 @@ import Filters from './components/filters.js'; export default class View {
             <td class="text-center"></td>
             <td class="text-right d-flex justify-content-end gap-2"></td>
         `;
+
+        // checkbox
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.checked = todo.completed;
         checkbox.onclick = () => this.toggleCompleted(todo.id);
         row.children[3].appendChild(checkbox);
 
+        // botones
         const editBtn = document.createElement('button');
-        editBtn.classList.add('btn', 'btn-primary', 'mb-1');
+        editBtn.classList.add('btn', 'btn-primary');
         editBtn.innerHTML = '<i class="fa fa-pencil"></i>';
         editBtn.setAttribute('data-toggle', 'modal');
         editBtn.setAttribute('data-target', '#modal');
-        editBtn.onclick = () => this.modal.setValues({
-            id: todo.id,
-            title: row.children[0].innerText,
-            description: row.children[1].innerText,
-            completed: row.children[3].children[0].checked,
-        });
-        //row.children[3].appendChild(editBtn);
+        editBtn.onclick = () => this.modal.setValues(todo);
 
         const removeBtn = document.createElement('button');
-        removeBtn.classList.add('btn', 'btn-danger', 'mb-1', 'ml-1');
+        removeBtn.classList.add('btn', 'btn-danger');
         removeBtn.innerHTML = '<i class="fa fa-trash"></i>';
         removeBtn.onclick = () => this.removeTodo(todo.id);
-        //row.children[3].appendChild(removeBtn);
 
         const archiveBtn = document.createElement('button');
-        archiveBtn.classList.add('btn', 'btn-warning', 'mb-1', 'ml-1');
+        archiveBtn.classList.add('btn', 'btn-warning');
         archiveBtn.innerHTML = '<i class="fa fa-archive"></i>';
+        archiveBtn.onclick = () => this.toggleArchived(todo.id);
 
-        archiveBtn.onclick = () => {
-            this.model.toggleArchived(todo.id);
-
-            const updated = this.model.getTodos().find(t => t.id === todo.id);
-
-            if (updated.archived) {
-                row.classList.add('table-secondary');
-            } else {
-                row.classList.remove('table-secondary');
-            }
-
-            this.filter({ type: 'all', words: '' });
-        };
         const actionsCell = row.children[4];
-
         actionsCell.appendChild(editBtn);
         actionsCell.appendChild(removeBtn);
         actionsCell.appendChild(archiveBtn);
 
-        row.children[4].appendChild(archiveBtn);
+        // 🔥 estilos SOLO basados en estado
         if (todo.archived) {
-             row.classList.remove('table-danger', 'table-warning');
             row.classList.add('table-secondary');
         }
 
@@ -163,20 +149,25 @@ import Filters from './components/filters.js'; export default class View {
             const today = new Date();
             const due = new Date(todo.dueDate);
 
-            // quitar horas para comparar solo fecha
             today.setHours(0, 0, 0, 0);
             due.setHours(0, 0, 0, 0);
 
             const diffDays = (due - today) / (1000 * 60 * 60 * 24);
 
             if (diffDays < 0) {
-                //vencida
                 row.classList.add('table-danger');
-               
             } else if (diffDays <= 2) {
-                // próxima (2 días o menos)
                 row.classList.add('table-warning');
             }
         }
+    }
+
+    async toggleArchived(id) {
+        await this.model.toggleArchived(id);
+        this.render();
+    }
+
+    showError(message) {
+        alert(message);
     }
 }

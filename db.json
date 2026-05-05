@@ -1,0 +1,32 @@
+{
+  "todos": [
+    {
+      "archived": true,
+      "createdAt": "2026-05-05T03:40:33.418Z",
+      "title": "Estudiar",
+      "description": "Estudiando",
+      "completed": false,
+      "dueDate": "5500-12-12",
+      "id": "_DR98D4yLBw"
+    },
+    {
+      "archived": true,
+      "createdAt": "2026-05-05T03:41:00.810Z",
+      "title": "Hacer caso",
+      "description": "Responder",
+      "completed": false,
+      "dueDate": null,
+      "id": "vcLo3kyTy8I"
+    },
+    {
+      "title": "Añadir",
+      "description": "Añadiendo la evidencia",
+      "completed": false,
+      "archived": false,
+      "createdAt": "2026-05-05T04:00:16.309Z",
+      "dueDate": "2026-09-15",
+      "id": "uuBR-7L4_54"
+    }
+  ],
+  "$schema": "./node_modules/json-server/schema.json"
+}
