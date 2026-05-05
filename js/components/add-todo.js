@@ -4,6 +4,7 @@ export default class AddTodo {
         this.btn = document.getElementById('add');
         this.title = document.getElementById('title');
         this.description = document.getElementById('description');
+        this.dueDate = document.getElementById('dueDate');
         this.alert = new Alert('alert');
     }
     onClick(callback) {
@@ -12,7 +13,11 @@ export default class AddTodo {
                 this.alert.show('Title and description are required');
             } else {
                 this.alert.hide();
-                callback(this.title.value, this.description.value);
+                callback(
+                    this.title.value,
+                    this.description.value,
+                    this.dueDate.value
+                );
 
             }
 
